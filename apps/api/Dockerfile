@@ -1,5 +1,5 @@
 # Build stage
-FROM --platform=$BUILDPLATFORM node:20-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:20.20-alpine AS builder
 
 # Install build dependencies in a single layer
 RUN apk add --no-cache python3 make g++ && \
@@ -33,8 +33,8 @@ WORKDIR /app/apps/api
 RUN sed -i 's/"extends": "@kaneo\/typescript-config\/base.json"/"extends": "..\/..\/packages\/typescript-config\/base.json"/g' /app/apps/api/tsconfig.json && \
   pnpm run build
 
-# Production stage - use specific version tag without SHA256
-FROM node:20.20.2-alpine AS runtime
+# Production stage - use tracked Alpine version
+FROM node:20.20-alpine AS runtime
 
 # Set up user in a single layer
 RUN addgroup -g 1001 appuser && \
