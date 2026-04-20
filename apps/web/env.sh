@@ -15,8 +15,6 @@ if [ ! -z "$KANEO_API_URL" ]; then
   find /usr/share/nginx/html -type f -name "*.js" -exec grep -l "\"KANEO_API_URL\"" {} \; | xargs -r sed -i "s#\"KANEO_API_URL\"#\"$KANEO_API_URL\"#g"
   
   echo "✅ Replaced KANEO_API_URL with $KANEO_API_URL"
-else
-  echo "WARNING: KANEO_API_URL environment variable is not set. API calls may fail."
 fi
 
 # Process KANEO_CLIENT_URL efficiently
