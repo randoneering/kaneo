@@ -580,21 +580,33 @@ export function createApp() {
     ) {
       return next();
     }
-    try {
-      await authenticateApiRequest(c);
-    } catch (error) {
-      if (error instanceof HTTPException) {
-        throw error;
+    // Drop any user inherited from a previous request or initialization so
+    // captures before auth (or on auth failure) don't leak a stale id.
+    Sentry.setUser(null);
+    // Wrap the request pipeline in a forked Sentry scope. authenticateApiRequest
+    // sets the user on this scope, which is restored when the callback exits;
+    // the .finally below then clears any leftover state on the parent scope.
+    return Sentry.withScope(async () => {
+      try {
+        await authenticateApiRequest(c);
+      } catch (error) {
+        if (error instanceof HTTPException) {
+          throw error;
+        }
+        console.error("API authentication failed:", error);
+        throw new HTTPException(500, { message: "Internal Server Error" });
       }
-      console.error("API authentication failed:", error);
-      throw new HTTPException(500, { message: "Internal Server Error" });
-    }
 
-    const windowId = c.req.header("X-Kaneo-Window-Id");
-    const userId = c.get("userId");
-    const initiatorId = windowId ? `${userId}:${windowId}` : userId;
+      const windowId = c.req.header("X-Kaneo-Window-Id");
+      const userId = c.get("userId");
+      const initiatorId = windowId ? `${userId}:${windowId}` : userId;
 
-    return eventContext.run({ initiatorId }, next);
+      return eventContext.run({ initiatorId }, next);
+    }).finally(() => {
+      // Drop the per-request user so post-request background work or a
+      // stale current scope can't attribute events to the last request.
+      Sentry.setUser(null);
+    });
   });
 
   const oauthApi = api.route("/oauth", oauth);
